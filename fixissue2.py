@@ -1,3 +1,4 @@
+
 from tkinter import *
 import tkinter.font
 from PIL import Image, ImageTk
@@ -25,8 +26,8 @@ class StartWindow():
 
 #*I will try making a new class.
     def default(self):
-        self.startwindow.destroy()
-        self.play_window = Tk()
+        self.play_window = Toplevel(self.startwindow)
+        self.play_window.title("User play window")
         self.my_canvas = Canvas(self.play_window, width=500, height=500, bg="white")
         self.my_canvas.grid(row=0, column=0)
         self.door1_image = ImageTk.PhotoImage(Image.open("images/door1.jpg"))
@@ -54,6 +55,13 @@ class StartWindow():
         door_3_value = random.choice(assign_list)
         self.my_canvas.itemconfig(self.door3, tags=('door3', door_3_value))
         assign_list.remove(door_3_value)
+
+        #*To differentiate between computer and simulation
+        if self.mode.get() == 'User':
+            print("lol")
+        else:
+            #*Simuulation time
+            self.simulation_main()
 
 
     def user_bind(self):
@@ -89,7 +97,7 @@ class StartWindow():
         if self.change_tracker == 0:
             self.change_function()
         else:
-            self.final_check()
+            self.final_check(selected_door)
     #*Rather than inheriting a whole class, I should try to reuse methods in the class.
 
     def change_function(self):
@@ -138,19 +146,76 @@ class StartWindow():
             self.my_canvas.tag_unbind(door_tag, '<ButtonPress-1>')
             self.my_canvas.tag_bind(door_tag, '<ButtonPress-1>', lambda event, selected_door=item: self.print_hi(event, selected_door))
 
-    def final_check(self, event, selected_door):
-        pass
-            
+    def final_check(self, selected_door):
+        #*First unbind all the buttons
+        for item in self.change_door_list:
+            door_tag = self.my_canvas.gettags(item)[0]
+            self.my_canvas.tag_unbind(door_tag, '<ButtonPress-1>')
 
+        self.coords = self.my_canvas.coords(selected_door)
+        self.x = self.coords[0]
+        self.y = self.coords[1]
+        if 'car' in self.my_canvas.gettags(selected_door):
+            self.car_image = ImageTk.PhotoImage(Image.open('images/car.jpg'))
+            self.my_canvas.create_image(self.x, self.y, image=self.car_image)
+            self.my_canvas.delete(self.change_door)
+            self.my_canvas.create_text(300, 350, text="Congratulations!! You won the car!!", font=self.door_font, fill='red')
+
+        else:
+            self.my_canvas.create_image(self.x, self.y, image=self.goat_image)
+            self.my_canvas.delete(self.change_door)
+            self.my_canvas.create_text(300, 350, text="lol u noob", font=self.door_font, fill='red')
+            
+        self.my_canvas.delete(selected_door)
+        #*I want to reset the counter value.
+        self.change_tracker = 0
 
     def user_actions(self):
         self.default()
         self.user_bind()
 
+    def simulation_setup(self):
+        self.setup_window = Toplevel(self.startwindow)
+        self.slider_intro = Label(self.setup_window, text="How many simulations do you want to perform?")
+        self.slider_intro.grid(row=0, column=0)
+        self.slider = Scale(self.setup_window, from_=1, to=100000, orient=HORIZONTAL, length=250)
+        self.slider.grid(row=1, column=0)
+        self.time_intro = Label(self.setup_window, text='How much time should the simulation take?\n(For the sake of graphics)')
+        self.time_intro.grid(row=2, column=0)
+        self.time_var = StringVar()
+        self.time_var.set('10sec')
+        time_list = ['MIN TIME', '10sec', '15sec', '20sec']
+        self.time_dropbox = OptionMenu(self.setup_window, self.time_var, *time_list)
+        self.time_dropbox.grid(row=3, column=0)
+        self.switch_var = StringVar()
+        self.switch_var.set('Switch during simulation')
+        switch_or_no = ['Switch during simulation', "Don't switch during simulation"]
+        self.switch_dropbox = OptionMenu(self.setup_window, self.switch_var, *switch_or_no)
+        self.switch_dropbox.grid(row=4, column=0)
+        self.start_button = Button(self.setup_window, text="Start simulation!", command=self.default)
+        self.start_button.grid(row=5, column=0)
+
+    def simulation_main(self):
+        #*The assignment of tags have already been done
+        self.door_list = [self.door1, self.door2, self.door3]
+        self.change_door_list = self.door_list.copy()
+        self.show_fake_list = self.door_list.copy()
+        self.choice_1 = random.choice(self.show_fake_list)
+        self.show_fake_list.remove(self.choice_1)
+
+        for item in self.show_fake_list:
+            if 'car' in self.my_canvas.gettags(item):
+                self.show_fake_list.remove(item)
+        
+        self.show_choice = random.choice(self.show_fake_list)
+        self.change_door_list.remove(self.show_choice)
+
+        #*Switch or not 
+
+        
 
     def computer_actions(self):
-        self.default()
-
+        self.simulation_setup()
     
 
 
