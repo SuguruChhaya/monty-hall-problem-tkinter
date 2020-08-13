@@ -20,6 +20,9 @@ class StartWindow():
         self.computer_mode.grid(row=2, column=0, sticky=W)
         #*I will create the simulation options later.
 
+        #*To keep track of whether the change_function has ran already.
+        self.change_tracker = 0
+
 #*I will try making a new class.
     def default(self):
         self.startwindow.destroy()
@@ -54,33 +57,44 @@ class StartWindow():
 
 
     def user_bind(self):
+        print("passed user bind")
         #*I need to follow this specific format
         #?I think I will want this is a different function because if I will inherit from this, I don't want to bind.
         #*If the bind keyword contains any of the items in the tuple, I can move it with it.
         #!Just to note: when binded, tkinter automatically creates a tag called 'current' at the end.
+        #?This was false, but I know that the binding gave me a tuple error at the point where I hit the selected door.
+        #*For example, if I selected door3, door1 and 2 will work without an error, but door3 doesn't.
         self.my_canvas.tag_bind('door1', '<ButtonPress-1>', lambda event, selected_door=self.door1: self.print_hi(event, selected_door))
+        #?I think the bug is related to the current tag attatchedto whatever door I chose first. I will first try to remove the tag
         self.my_canvas.tag_bind('door2', '<ButtonPress-1>', lambda event, selected_door=self.door2: self.print_hi(event, selected_door))
         self.my_canvas.tag_bind('door3', '<ButtonPress-1>', lambda event, selected_door=self.door3: self.print_hi(event, selected_door))
 
     def print_hi(self, event, selected_door):
+        print("passed hi")
         #*Try to forget all the bindings
         try:
             self.my_canvas.delete(self.down_arrow)
         #*For when object wasn't created yet
         except AttributeError:
             pass
+        #!This whole tag issue might be because of the following functions!
         self.x_coord, self.y_coord = self.my_canvas.coords(selected_door)[0], self.my_canvas.coords(selected_door)[1]
         self.down_arrow = self.my_canvas.create_image(self.x_coord, self.y_coord - 120, image=self.down_arrow_image, tags='arrow')
         #*To keep track of what has been chosen by tags
         #!I will use the the down_arrow as a reference for the add_tag_below
         #self.my_canvas.addtag_below('chosen', 'arrow')
-        self.change_function()
+
+        #*Since I want to reuse this function the second time without running the change function, I am keeping track of whether it had
+        #*ran already.
+        if self.change_tracker == 0:
+            self.change_function()
+        else:
+            self.final_check()
     #*Rather than inheriting a whole class, I should try to reuse methods in the class.
 
     def change_function(self):
-        print(self.my_canvas.gettags(self.door1))
-        print(self.my_canvas.gettags(self.door2))
-        print(self.my_canvas.gettags(self.door3))
+        self.change_tracker = 1
+        print("passed change function")
         self.my_canvas.delete(self.select_door)
         self.change_door = self.my_canvas.create_text(300, 350, text="LAST CHANCE to switch doors!\nClick your final pick!", font=self.door_font, fill='red')
         self.door_list = [self.door1, self.door2, self.door3]
@@ -88,18 +102,45 @@ class StartWindow():
         self.change_door_list = self.door_list.copy()
         
         for item in self.door_list:
-            if 'car' in self.my_canvas.gettags(item) or 'current' in self.my_canvas.gettags(item):
+            if 'car' in self.my_canvas.gettags(item):
                 self.show_fake_list.remove(item)
+            #*I have to make this 'elif' just in case the 'current' had the 'car'. I cannot double remove the item.
+            elif 'current' in self.my_canvas.gettags(item):
+                self.show_fake_list.remove(item)
+                #*Deleting the 'current tag'
+                #self.my_canvas.dtag(item, 'current')
         
             #*I also cannot choose the one the person has chosen
 
         self.show_fake = random.choice(self.show_fake_list)
         #*I think I should nicely unbind this thing
+        #!I think I need to look into this tag unbind method
         self.goat_coords = self.my_canvas.coords(self.show_fake)
+        self.goat_x = self.goat_coords[0]
+        self.goat_y = self.goat_coords[1]
+        print(self.goat_x)
         print(self.goat_coords)
+        print(self.my_canvas.gettags(self.door1))
+        print(self.my_canvas.gettags(self.door2))
+        print(self.my_canvas.gettags(self.door3))
+        print(self.door1)
         self.my_canvas.delete(self.show_fake)
         self.goat_image = ImageTk.PhotoImage(Image.open('images/goat.jpg'))
-        self.goat_door = self.my_canvas.create_image(self.my_canvas.coords(self.goat_coords[0], self.goat_coords[1]), image=self.goat_image)
+        self.goat_door = self.my_canvas.create_image(self.goat_x, self.goat_y, image=self.goat_image)
+
+        #*Re-creating the bindings
+        self.change_door_list.remove(self.show_fake)
+        print(self.change_door_list)
+        for item in self.change_door_list:
+            #!Using tuples to unbind doesn't work!!
+            #*I have to use a string inside the tuple instead
+            door_tag = self.my_canvas.gettags(item)[0]
+            self.my_canvas.tag_unbind(door_tag, '<ButtonPress-1>')
+            self.my_canvas.tag_bind(door_tag, '<ButtonPress-1>', lambda event, selected_door=item: self.print_hi(event, selected_door))
+
+    def final_check(self, event, selected_door):
+        pass
+            
 
 
     def user_actions(self):
