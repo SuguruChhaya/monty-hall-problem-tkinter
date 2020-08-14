@@ -61,7 +61,8 @@ class StartWindow():
             print("lol")
         else:
             #*Simuulation time
-            self.simulation_main()
+            #*I think I can create an after function at this point
+            self.after_func = self.my_canvas.after(1000, self.simulation_main)
 
 
     def user_bind(self):
@@ -123,18 +124,10 @@ class StartWindow():
         self.show_fake = random.choice(self.show_fake_list)
         #*I think I should nicely unbind this thing
         #!I think I need to look into this tag unbind method
-        self.goat_coords = self.my_canvas.coords(self.show_fake)
-        self.goat_x = self.goat_coords[0]
-        self.goat_y = self.goat_coords[1]
-        print(self.goat_x)
-        print(self.goat_coords)
         print(self.my_canvas.gettags(self.door1))
         print(self.my_canvas.gettags(self.door2))
         print(self.my_canvas.gettags(self.door3))
         print(self.door1)
-        self.my_canvas.delete(self.show_fake)
-        self.goat_image = ImageTk.PhotoImage(Image.open('images/goat.jpg'))
-        self.goat_door = self.my_canvas.create_image(self.goat_x, self.goat_y, image=self.goat_image)
 
         #*Re-creating the bindings
         self.change_door_list.remove(self.show_fake)
@@ -145,6 +138,15 @@ class StartWindow():
             door_tag = self.my_canvas.gettags(item)[0]
             self.my_canvas.tag_unbind(door_tag, '<ButtonPress-1>')
             self.my_canvas.tag_bind(door_tag, '<ButtonPress-1>', lambda event, selected_door=item: self.print_hi(event, selected_door))
+        self.show_goat()
+
+    def show_goat(self):
+        self.goat_coords = self.my_canvas.coords(self.show_fake)
+        self.goat_x = self.goat_coords[0]
+        self.goat_y = self.goat_coords[1]
+        self.my_canvas.delete(self.show_fake)
+        self.goat_image = ImageTk.PhotoImage(Image.open('images/goat.jpg'))
+        self.goat_door = self.my_canvas.create_image(self.goat_x, self.goat_y, image=self.goat_image)
 
     def final_check(self, selected_door):
         #*First unbind all the buttons
@@ -201,19 +203,58 @@ class StartWindow():
         self.change_door_list = self.door_list.copy()
         self.show_fake_list = self.door_list.copy()
         self.choice_1 = random.choice(self.show_fake_list)
+        #*I have to add a down_arrow function for this.
         self.show_fake_list.remove(self.choice_1)
 
         for item in self.show_fake_list:
             if 'car' in self.my_canvas.gettags(item):
                 self.show_fake_list.remove(item)
         
-        self.show_choice = random.choice(self.show_fake_list)
-        self.change_door_list.remove(self.show_choice)
-
+        self.show_fake = random.choice(self.show_fake_list)
+        self.change_door_list.remove(self.show_fake)
+        self.show_goat()
+        self.x_coord, self.y_coord = self.my_canvas.coords(self.choice_1)[0], self.my_canvas.coords(self.choice_1)[1]
+        self.down_arrow = self.my_canvas.create_image(self.x_coord, self.y_coord - 120, image=self.down_arrow_image, tags='arrow')
+        self.my_canvas.delete(self.select_door)
+        self.change_door = self.my_canvas.create_text(300, 350, text="LAST CHANCE to switch doors!\nClick your final pick!", font=self.door_font, fill='red')
         #*Switch or not 
+        if self.switch_var.get() == 'Switch during simulation':
+            self.after_switch = self.my_canvas.after(1000, self.simulation_switch)
+        else:
+            self.after_noswitch = self.my_canvas.after(1000, self.simulation_noswitch)
+    
+    def simulation_switch(self):
+        print('simulation switch')
+        self.my_canvas.delete(self.down_arrow)
+        self.change_door_list.remove(self.choice_1)
+        self.x_coord, self.y_coord = self.my_canvas.coords(self.change_door_list[0])[0], self.my_canvas.coords(self.change_door_list[0])[1]
+        self.down_arrow = self.my_canvas.create_image(self.x_coord, self.y_coord - 120, image=self.down_arrow_image, tags='arrow')
 
-        
+        if 'car' in self.my_canvas.gettags(self.change_door_list[0]):
+            self.car_image = ImageTk.PhotoImage(Image.open('images/car.jpg'))
+            self.my_canvas.create_image(self.x_coord, self.y_coord, image=self.car_image)
+            self.my_canvas.delete(self.change_door)
+            self.my_canvas.create_text(300, 350, text="Congratulations!! You won the car!!", font=self.door_font, fill='red')
 
+        else:
+            self.my_canvas.create_image(self.x_coord, self.y_coord, image=self.goat_image)
+            self.my_canvas.delete(self.change_door)
+            self.my_canvas.create_text(300, 350, text="lol u noob", font=self.door_font, fill='red')
+    def simulation_noswitch(self):
+        self.my_canvas.delete(self.down_arrow)
+        self.x_coord, self.y_coord = self.my_canvas.coords(self.choice_1)[0], self.my_canvas.coords(self.choice_1)[0]
+        self.down_arrow = self.my_canvas.create_image(self.x_coord, self.y_coord, image=self.down_arrow_image)
+        if 'car' in self.my_canvas.gettags(self.choice_1):
+            self.car_image = ImageTk.PhotoImage(Image.open('images/car.jpg'))
+            self.my_canvas.create_image(self.x_coord, self.y_coord, image=self.car_image)
+            self.my_canvas.delete(self.change_door)
+            self.my_canvas.create_text(300, 350, text="Congratulations!! You won the car!!", font=self.door_font, fill='red')
+
+        else:
+            self.my_canvas.create_image(self.x_coord, self.y_coord, image=self.goat_image)
+            self.my_canvas.delete(self.change_door)
+            self.my_canvas.create_text(300, 350, text="lol u noob", font=self.door_font, fill='red')
+    
     def computer_actions(self):
         self.simulation_setup()
     
