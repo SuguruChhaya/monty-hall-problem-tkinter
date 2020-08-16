@@ -3,6 +3,9 @@ from tkinter import *
 import tkinter.font
 from PIL import Image, ImageTk
 import random
+
+from tkinter import messagebox
+
 #!Rather than making the classes efficient, I will first focus on building the actual thing.
 #*I might want to use inheritance in the future because the basic graphics is the same.
 #*I find issues working in different windows in different classes
@@ -26,6 +29,22 @@ class StartWindow():
 
 #*I will try making a new class.
     def default(self):
+        print('passed default')
+        try:
+            self.play_window.destroy()
+        except AttributeError:
+            pass
+
+        #*Try to get the slider value
+        #*I added TypeError because I set the value of self.slider_value to None after the initial simulation.
+        #*This causes me to re-retrieve the value of self.slider.get()
+        try:
+            self.slider_value -= 1    
+        except AttributeError:
+            self.slider_value = self.slider.get() 
+        except TypeError:
+            self.slider_value = self.slider.get()
+
         self.play_window = Toplevel(self.startwindow)
         self.play_window.title("User play window")
         self.my_canvas = Canvas(self.play_window, width=500, height=500, bg="white")
@@ -62,7 +81,16 @@ class StartWindow():
         else:
             #*Simuulation time
             #*I think I can create an after function at this point
-            self.after_func = self.my_canvas.after(1000, self.simulation_main)
+            #*Also calculate time.
+            #*1. main to switch, 2. switch to final check, 3. final check to default, 4. default to main : therfore 4 parts
+            if self.time_var.get() == 'MIN TIME':
+                self.after_time = 0
+            else:
+                self.after_time = int(int(self.time_var.get()[:2]) / (self.slider.get() * 4) * 1000)
+                if self.after_time < 50:
+                    self.after_time = 0
+            print(self.after_time)
+            self.after_func = self.my_canvas.after(self.after_time, self.simulation_main)
 
 
     def user_bind(self):
@@ -172,15 +200,17 @@ class StartWindow():
         #*I want to reset the counter value.
         self.change_tracker = 0
 
+
     def user_actions(self):
         self.default()
         self.user_bind()
 
     def simulation_setup(self):
+        self.simulation_count = 0
         self.setup_window = Toplevel(self.startwindow)
         self.slider_intro = Label(self.setup_window, text="How many simulations do you want to perform?")
         self.slider_intro.grid(row=0, column=0)
-        self.slider = Scale(self.setup_window, from_=1, to=100000, orient=HORIZONTAL, length=250)
+        self.slider = Scale(self.setup_window, from_=1, to=1000, orient=HORIZONTAL, length=250)
         self.slider.grid(row=1, column=0)
         self.time_intro = Label(self.setup_window, text='How much time should the simulation take?\n(For the sake of graphics)')
         self.time_intro.grid(row=2, column=0)
@@ -197,7 +227,10 @@ class StartWindow():
         self.start_button = Button(self.setup_window, text="Start simulation!", command=self.default)
         self.start_button.grid(row=5, column=0)
 
+
+
     def simulation_main(self):
+        print('passed simulation main')
         #*The assignment of tags have already been done
         self.door_list = [self.door1, self.door2, self.door3]
         self.change_door_list = self.door_list.copy()
@@ -218,10 +251,14 @@ class StartWindow():
         self.my_canvas.delete(self.select_door)
         self.change_door = self.my_canvas.create_text(300, 350, text="LAST CHANCE to switch doors!\nClick your final pick!", font=self.door_font, fill='red')
         #*Switch or not 
+        
+
         if self.switch_var.get() == 'Switch during simulation':
-            self.after_switch = self.my_canvas.after(1000, self.simulation_switch)
+            self.after_switch = self.my_canvas.after(self.after_time, self.simulation_switch)
         else:
-            self.after_noswitch = self.my_canvas.after(1000, self.simulation_noswitch)
+            self.after_noswitch = self.my_canvas.after(self.after_time, self.simulation_noswitch)
+
+
     
     def simulation_switch(self):
         print('simulation switch')
@@ -229,32 +266,48 @@ class StartWindow():
         self.change_door_list.remove(self.choice_1)
         self.x_coord, self.y_coord = self.my_canvas.coords(self.change_door_list[0])[0], self.my_canvas.coords(self.change_door_list[0])[1]
         self.down_arrow = self.my_canvas.create_image(self.x_coord, self.y_coord - 120, image=self.down_arrow_image, tags='arrow')
+        self.final = self.my_canvas.after(self.after_time, self.final_simulation_check)
+        
 
-        if 'car' in self.my_canvas.gettags(self.change_door_list[0]):
-            self.car_image = ImageTk.PhotoImage(Image.open('images/car.jpg'))
-            self.my_canvas.create_image(self.x_coord, self.y_coord, image=self.car_image)
-            self.my_canvas.delete(self.change_door)
-            self.my_canvas.create_text(300, 350, text="Congratulations!! You won the car!!", font=self.door_font, fill='red')
 
-        else:
-            self.my_canvas.create_image(self.x_coord, self.y_coord, image=self.goat_image)
-            self.my_canvas.delete(self.change_door)
-            self.my_canvas.create_text(300, 350, text="lol u noob", font=self.door_font, fill='red')
+
     def simulation_noswitch(self):
+        print('simulation no switch')
         self.my_canvas.delete(self.down_arrow)
-        self.x_coord, self.y_coord = self.my_canvas.coords(self.choice_1)[0], self.my_canvas.coords(self.choice_1)[0]
+        self.x_coord, self.y_coord = self.my_canvas.coords(self.choice_1)[0], self.my_canvas.coords(self.choice_1)[1]
         self.down_arrow = self.my_canvas.create_image(self.x_coord, self.y_coord, image=self.down_arrow_image)
+        self.final = self.my_canvas.after(self.after_time, self.final_simulation_check)
+
+
+    def final_simulation_check(self):
         if 'car' in self.my_canvas.gettags(self.choice_1):
             self.car_image = ImageTk.PhotoImage(Image.open('images/car.jpg'))
             self.my_canvas.create_image(self.x_coord, self.y_coord, image=self.car_image)
             self.my_canvas.delete(self.change_door)
             self.my_canvas.create_text(300, 350, text="Congratulations!! You won the car!!", font=self.door_font, fill='red')
-
+            self.simulation_count += 1
         else:
-            self.my_canvas.create_image(self.x_coord, self.y_coord, image=self.goat_image)
             self.my_canvas.delete(self.change_door)
+            self.my_canvas.create_image(self.x_coord, self.y_coord, image=self.goat_image)
             self.my_canvas.create_text(300, 350, text="lol u noob", font=self.door_font, fill='red')
-    
+
+        #*I have to first store the slider value in a different variable.
+
+        #*The reason I have to make this 1 instead of 0 is because for example if I choose 6 simulations,
+        #*I will go through the loop 7 times (6, 5, 4, 3, 2, 1, 0). So I should delete the case of 0
+        if self.slider_value > 1:
+            #?I have to make sure the self.slider_value only gets initialized once.
+            #*Basically self.default is setting the slider value to the initial value. Even if I subtract 1 from that, it will be 
+            #*re-initialized when I come back. I have to do something about that.
+            print(self.slider_value)
+            self.next_simulation = self.my_canvas.after(self.after_time, self.default)
+        else:
+            print(self.slider_value)
+            self.slider_value = None
+            #*Create the new window which tracks the value of returns percentage
+            messagebox.showinfo("Final report", f"Total number of simulations: {self.slider.get()}\nSimulation type: {self.switch_var.get()}\nTotal count of successful simulations: {self.simulation_count}\nPercentage of success: {self.simulation_count / self.slider.get()}")
+
+
     def computer_actions(self):
         self.simulation_setup()
     
